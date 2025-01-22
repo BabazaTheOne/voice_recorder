@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Recorder with Timer</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+        #timer {
+            font-size: 3em;
+            text-align: center;
+            color: #333;
+        }
+        .controls {
+            margin-top: 20px;
+        }
+        button {
+            font-size: 1.2em;
+            padding: 10px 20px;
+            margin: 5px;
+            border: 1px #ddd solid;
+            border-radius: 12px;
+        }
+        audio {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div>
+    <div id="timer">00:00:00</div>
+    <div class="controls">
+        <button onclick="startRecording()">Start</button>
+        <button onclick="pauseRecording()">Pause</button>
+        <button onclick="stopRecording()">Stop</button>
+    </div>
+    <audio id="audioPlayback" controls></audio>
+</div>
+
+<script>
+    let startTime;
+    let elapsedTime = 0;
+    let timerInterval;
+    let mediaRecorder;
+    let audioChunks = [];
+    let duration ;
+
+    // Format time as HH:MM:SS
+    function formatTime(time) {
+        let hours = Math.floor((time / (1000 * 60 * 60)) % 24);
+        let minutes = Math.floor((time / (1000 * 60)) % 60);
+        let seconds = Math.floor((time / 1000) % 60);
+        
+        // Add leading zeros
+        hours = hours < 10 ? '0' + hours : hours;
+        minutes = minutes < 10 ? '0' + minutes : minutes;
+        seconds = seconds < 10 ? '0' + seconds : seconds;
+
+        return `${hours}:${minutes}:${seconds}`;
+    }
+
+    // Start the timer
+    function startTimer() {
+        startTime = Date.now() - elapsedTime;
+        timerInterval = setInterval(() => {
+            elapsedTime = Date.now() - startTime;
+            duration = elapsedTime;
+            document.getElementById('timer').innerHTML = formatTime(elapsedTime);
+        }, 1000);
+    }
+
+    // Pause the timer
+    function pauseTimer() {
+        clearInterval(timerInterval);
+    }
+
+    // Reset the timer
+    function resetTimer() {
+        clearInterval(timerInterval);
+        elapsedTime = 0;
+        document.getElementById('timer').innerHTML = "00:00:00";
+    }
+
+    // Start recording
+    function startRecording() {
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                resetTimer();
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.start();
+                audioChunks = [];
+                mediaRecorder.addEventListener("dataavailable", event => {
+                    audioChunks.push(event.data);
+                });
+
+                mediaRecorder.addEventListener("stop", () => {
+                    resetTimer()
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    const audio = document.getElementById('audioPlayback');
+                    audio.src = audioUrl;
+
+                });
+
+                startTimer();
+            });
+    }
+
+    // Pause recording
+    function pauseRecording() {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            mediaRecorder.stop();
+             elapsedTime = 0;
+        }
+        pauseTimer();
+    }
+
+    // Stop recording
+    function stopRecording() {
+        if (mediaRecorder) {
+            mediaRecorder.stop();
+            elapsedTime = 0;
+            resetTimer();
+        }
+       
+    }
+</script>
+
+</body>
+</html>
